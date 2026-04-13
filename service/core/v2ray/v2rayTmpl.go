@@ -309,6 +309,7 @@ func (t *Template) setDNS(outbounds []serverInfo, supportUDP map[string]bool) (r
 	outboundTags := t.outNames()
 	var internal, external, all []string
 	var allThroughProxy = false
+	forceTunDNSFallback := false
 	if t.Setting.AntiPollution == configure.AntipollutionAdvanced {
 		// advanced
 		internal = configure.GetInternalDnsListNotNil()
@@ -357,6 +358,17 @@ func (t *Template) setDNS(outbounds []serverInfo, supportUDP map[string]bool) (r
 		case configure.AntipollutionDoH:
 			external = []string{"https://doh.pub/dns-query -> direct", "https://rubyfish.cn/dns-query -> direct"}
 		}
+	} else if t.Setting.TransparentType == configure.TransparentGvisorTun ||
+		t.Setting.TransparentType == configure.TransparentSystemTun {
+		// In TUN mode, falling back to "localhost" means using the container/host
+		// system resolver directly. In Docker/WSL environments this often points
+		// to a local stub resolver that returns polluted results, which then makes
+		// TLS connections hang against the wrong destination IP.
+		// Use a compact split-DNS fallback instead of the large preset list so we
+		// don't explode the TUN route exclusion set on Linux/WSL.
+		forceTunDNSFallback = true
+		internal = []string{"223.6.6.6 -> direct", "119.29.29.29 -> direct"}
+		external = []string{"8.8.8.8 -> " + firstOutboundTag, "1.1.1.1 -> " + firstOutboundTag}
 	}
 	True := true
 	t.DNS = &coreObj.DNS{
@@ -366,7 +378,7 @@ func (t *Template) setDNS(outbounds []serverInfo, supportUDP map[string]bool) (r
 		// guess the user want to protect the privacy
 		t.DNS.DisableFallback = &True
 	}
-	if t.Setting.AntiPollution != configure.AntipollutionClosed {
+	if t.Setting.AntiPollution != configure.AntipollutionClosed || forceTunDNSFallback {
 		if len(external) == 0 {
 			// not split traffic
 			d, r := parseAdvancedDnsServers(internal, nil)
@@ -1185,6 +1197,11 @@ func GetBestLocalIP(preferIPv6 bool) (net.IP, error) {
 
 			// Skip APIPA (169.254.x.x)
 			if ip.To4() != nil && ip.To4()[0] == 169 && ip.To4()[1] == 254 {
+				continue
+			}
+			// Skip WSL DNS stub / synthetic host address. It is not a valid
+			// source address for outbound proxy connections.
+			if ip.To4() != nil && ip.Equal(net.ParseIP("10.255.255.254")) {
 				continue
 			}
 

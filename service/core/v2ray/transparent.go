@@ -128,6 +128,9 @@ func writeTransparentProxyRules(tmpl *Template) (err error) {
 		} else {
 			log.Warn("writeTransparentProxyRules: %v", e)
 		}
+	} else if setting.TransparentType == configure.TransparentGvisorTun ||
+		setting.TransparentType == configure.TransparentSystemTun {
+		resetResolvHijacker()
 	}
 	return nil
 }

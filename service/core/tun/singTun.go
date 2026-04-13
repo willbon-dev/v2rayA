@@ -8,8 +8,10 @@ import (
 	"net"
 	"net/netip"
 	"os"
+	"os/exec"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 
 	tun "github.com/sagernet/sing-tun"
@@ -211,6 +213,34 @@ func ResolveDnsServersToExcludes(dnsHosts []string) []netip.Prefix {
 	return excludes
 }
 
+func hasUsableIPv6DefaultRoute() bool {
+	if runtime.GOOS != "linux" {
+		return true
+	}
+
+	out, err := exec.Command("ip", "-6", "route", "show", "default").Output()
+	if err != nil {
+		log.Warn("[TUN] Failed to detect IPv6 default route: %v", err)
+		return false
+	}
+
+	text := strings.TrimSpace(string(out))
+	if text == "" {
+		return false
+	}
+
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "default ") || strings.Contains(line, " default ") {
+			return true
+		}
+	}
+	return false
+}
+
 func NewSingTun() Tun {
 	dialer := N.SystemDialer
 	client := socks.NewClient(dialer, M.ParseSocksaddrHostPort("127.0.0.1", 52345), socks.Version5, "", "")
@@ -296,6 +326,12 @@ func (t *singTun) Start(stack Stack) error {
 
 	autoRoute := t.autoRoute
 	strictRoute := t.strictRoute
+	useIPv6 := t.useIPv6
+
+	if useIPv6 && !hasUsableIPv6DefaultRoute() {
+		useIPv6 = false
+		log.Warn("[TUN] IPv6 TUN requested, but no usable IPv6 default route was found; starting in IPv4-only mode")
+	}
 
 	// On Windows, disable sing-tun's AutoRoute if user has disabled it
 	// or if we need to add manual default route with proper metric
@@ -336,6 +372,8 @@ func (t *singTun) Start(stack Stack) error {
 		Inet4Address:             []netip.Prefix{prefix4},
 		Inet4RouteAddress:        []netip.Prefix{route4},
 		Inet4RouteExcludeAddress: inet4Exclude, // Exclude loopback + server IPs
+		IPRoute2TableIndex:       tun.DefaultIPRoute2TableIndex,
+		IPRoute2RuleIndex:        tun.DefaultIPRoute2RuleIndex,
 		AutoRoute:                autoRoute,
 		StrictRoute:              strictRoute,
 		InterfaceMonitor:         interfaceMonitor,
@@ -350,7 +388,7 @@ func (t *singTun) Start(stack Stack) error {
 	}
 
 	// Enable IPv6 if requested
-	if t.useIPv6 {
+	if useIPv6 {
 		tunOptions.Inet6Address = []netip.Prefix{prefix6}
 		tunOptions.Inet6RouteAddress = []netip.Prefix{route6}
 		// Exclude IPv6 loopback (::1/128)
@@ -376,6 +414,10 @@ func (t *singTun) Start(stack Stack) error {
 		return err
 	}
 	failedCloser = append(failedCloser, tunInterface)
+	err = tunInterface.Start()
+	if err != nil {
+		return err
+	}
 
 	// Setup policy routing rules to exclude fwmark 0x80 traffic (v2ray/xray/plugin)
 	if err := SetupTunRouteRules(); err != nil {
