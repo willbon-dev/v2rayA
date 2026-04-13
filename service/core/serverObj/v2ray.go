@@ -53,6 +53,7 @@ type V2Ray struct {
 	Key           string `json:"key,omitempty"`
 	QuicSecurity  string `json:"quicSecurity"`
 	XHTTPMode     string `json:"xhttpMode,omitempty"`
+	Encryption    string `json:"encryption,omitempty"`
 	V             string `json:"v"`
 	Protocol      string `json:"protocol"`
 }
@@ -121,6 +122,7 @@ func ParseVlessURL(vless string) (data *V2Ray, err error) {
 			data.XHTTPMode = "auto"
 		}
 	}
+	data.Encryption = u.Query().Get("encryption")
 	return data, nil
 }
 
@@ -262,6 +264,10 @@ func (v *V2Ray) Configuration(info PriorInfo) (c Configuration, err error) {
 			if security == "" {
 				security = "auto"
 			}
+			encryption := v.Encryption
+			if encryption == "" {
+				encryption = "none"
+			}
 			core.Settings.Vnext = []coreObj.Vnext{
 				{
 					Address: v.Add,
@@ -269,19 +275,19 @@ func (v *V2Ray) Configuration(info PriorInfo) (c Configuration, err error) {
 					Users: []coreObj.User{
 						{
 							ID:         id,
-							Encryption: "none",
+							Encryption: encryption,
 						},
 					},
 				},
 			}
-		// if network == "tcp" {
-		// 	tcpSetting := coreObj.TCPSettings{
-		// 		Header: coreObj.TCPHeader{
-		// 			Type: "none",
-		// 		},
-		// 	}
-		// 	core.StreamSettings.TCPSettings = &tcpSetting
-		// }
+			// if network == "tcp" {
+			// 	tcpSetting := coreObj.TCPSettings{
+			// 		Header: coreObj.TCPHeader{
+			// 			Type: "none",
+			// 		},
+			// 	}
+			// 	core.StreamSettings.TCPSettings = &tcpSetting
+			// }
 		}
 		// 根据传输协议(network)修改streamSettings
 		//TODO: QUIC
@@ -498,6 +504,9 @@ func (v *V2Ray) ExportToURL() string {
 				setValue(&query, "sid", v.ShortId)
 				setValue(&query, "spx", v.SpiderX)
 			}
+		}
+		if v.Encryption != "" && v.Encryption != "none" {
+			setValue(&query, "encryption", v.Encryption)
 		}
 
 		U := url.URL{
