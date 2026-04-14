@@ -4,7 +4,7 @@ ADD .git ./.git
 RUN git describe --abbrev=0 --tags | tee ./version
 
 
-FROM node:lts-alpine AS builder-web
+FROM node:22-alpine AS builder-web
 ADD gui /build/gui
 WORKDIR /build/gui
 RUN echo "network-timeout 600000" >> .yarnrc
@@ -19,7 +19,7 @@ ENV GO111MODULE=on
 ENV GOPROXY=https://goproxy.cn
 COPY --from=version /build/version ./
 COPY --from=builder-web /build/web server/router/web
-RUN export VERSION=$(cat ./version) && CGO_ENABLED=0 go build -ldflags="-X github.com/v2rayA/v2rayA/conf.Version=${VERSION:1} -s -w" -o v2raya .
+RUN export VERSION=$(cat ./version) && CGO_ENABLED=0 go build -tags "with_gvisor" -ldflags="-X github.com/v2rayA/v2rayA/conf.Version=${VERSION:1} -s -w" -o v2raya .
 
 FROM teddysun/xray
 COPY --from=builder /build/service/v2raya /usr/bin/
