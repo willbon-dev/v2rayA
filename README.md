@@ -26,6 +26,38 @@ v2rayA mainly provides the following methods of installation:
 
 See [**v2rayA - Docs**](https://v2raya.org/en/docs/prologue/introduction/)
 
+### Docker quick start
+
+For the Xray image with gVisor TUN support:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/install-xray-docker.sh | sudo sh
+```
+
+This installer will:
+
+- copy the compose file to `/opt/v2raya-xray`
+- store v2rayA data in `/var/lib/v2raya-xray`
+- start the container with Docker Compose
+
+Update the deployment:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/update-xray-docker.sh | sudo sh -s -- --pull
+```
+
+Uninstall the deployment but keep data:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/uninstall-xray-docker.sh | sudo sh
+```
+
+Uninstall and remove data:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/uninstall-xray-docker.sh | sudo sh -s -- --purge-data
+```
+
 
 ## Screenshot
 

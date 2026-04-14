@@ -1,0 +1,16 @@
+services:
+  v2raya-xray:
+    image: ${V2RAYA_IMAGE:-willbon/v2raya:v2.2.7.5-xray}
+    container_name: ${V2RAYA_CONTAINER_NAME:-v2raya-xray}
+    restart: always
+    privileged: true
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    environment:
+      V2RAYA_ADDRESS: 0.0.0.0:2017
+    volumes:
+      - /lib/modules:/lib/modules:ro
+      - /etc/resolv.conf:/etc/resolv.conf
+      - ${V2RAYA_DATA_DIR:-/var/lib/v2raya-xray}:/etc/v2raya
+      - /dev/net/tun:/dev/net/tun

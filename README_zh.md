@@ -26,6 +26,38 @@ v2rayA 主要提供了下述使用方法：
 
 详见 [**v2rayA - Docs**](https://v2raya.org/docs/prologue/introduction/)
 
+### Docker 快速开始
+
+如果你要使用带 gVisor TUN 支持的 Xray 镜像：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/install-xray-docker.sh | sudo sh
+```
+
+这个安装脚本会：
+
+- 将 compose 文件复制到 `/opt/v2raya-xray`
+- 将 v2rayA 数据保存到 `/var/lib/v2raya-xray`
+- 使用 Docker Compose 启动容器
+
+更新部署：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/update-xray-docker.sh | sudo sh -s -- --pull
+```
+
+卸载部署但保留数据：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/uninstall-xray-docker.sh | sudo sh
+```
+
+卸载并删除数据：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/willbon-dev/v2rayA/main/install/docker/uninstall-xray-docker.sh | sudo sh -s -- --purge-data
+```
+
 
 ## 界面截图
 
